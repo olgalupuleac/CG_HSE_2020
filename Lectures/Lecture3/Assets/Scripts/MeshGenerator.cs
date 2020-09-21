@@ -1,14 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Numerics;
-using System.Xml.Serialization;
 using UnityEngine;
-using UnityEngine.Assertions;
 using Debug = System.Diagnostics.Debug;
 using Vector3 = UnityEngine.Vector3;
-using Unity.Mathematics;
 using static Unity.Mathematics.math;
 
 [RequireComponent(typeof(MeshFilter))]
@@ -65,8 +59,6 @@ public class MeshGenerator : MonoBehaviour
 
         // Just a little optimization, telling unity that the mesh is going to be updated frequently
         _mesh.MarkDynamic();
-        Field.Update();
-        CalculateTriangles();
     }
 
 
@@ -146,16 +138,16 @@ public class MeshGenerator : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        //_vertices.Clear();
-        //_indices.Clear();
-        //_normals.Clear();
+        _vertices.Clear();
+        _indices.Clear();
+        _normals.Clear();
 
-        //Field.Update();
-        //CalculateTriangles();
+        Field.Update();
+
         // ----------------------------------------------------------------
         // Generate mesh here. Below is a sample code of a cube generation.
         // ----------------------------------------------------------------
-
+        CalculateTriangles();
         // What is going to happen if we don't split the vertices? Check it out by yourself by passing
         // sourceVertices and _sourceTriangles to the mesh.
 
