@@ -77,7 +77,7 @@ Shader "Custom/ProjectionShader"
                 fixed4 y = i.normal.y * i.normal.y * tex2D(_YAlbedo, i.wPos.xz * _Scale);
                 fixed4 z = i.normal.z * i.normal.z * tex2D(_ZAlbedo, i.wPos.xy * _Scale);
                 fixed4 albedo = x + y + z;
-				return float4(albedo.rgb * getLighting(i), 1);
+                return float4(albedo.rgb * getLighting(i), 1);
         }
         ENDCG
     }
