@@ -94,6 +94,9 @@
                 float3 normal = normalize(i.normal);
                 
                 float3 viewDirection = normalize(_WorldSpaceCameraPos - i.pos.xyz);
+                // Replace this specular calculation by Montecarlo.
+                // Normalize the BRDF in such a way, that integral over a hemysphere of (BRDF * dot(normal, w')) == 1
+                // TIP: use Random(i) to get a pseudo-random value.
                 uint numberOfIterations = 5000;
                 float pi = 3.14159265359;
                 float3 res = 0;
@@ -117,12 +120,7 @@
                 }
                 res /= coef;
                 return fixed4(res, 1);
-                // Replace this specular calculation by Montecarlo.
-                // Normalize the BRDF in such a way, that integral over a hemysphere of (BRDF * dot(normal, w')) == 1
-                // TIP: use Random(i) to get a pseudo-random value.
-                float3 viewRefl = reflect(-viewDirection.xyz, normal);
-                float3 specular = SampleColor(viewRefl);
-                
+              
               
             }
             ENDCG
