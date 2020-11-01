@@ -1,5 +1,4 @@
-﻿﻿// Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel ComputeHarmonics
+﻿#pragma kernel ComputeHarmonics
 
 #define PI            3.14159265359f
 #define TWO_PI        6.28318530718f
@@ -9,6 +8,11 @@
 #define INV_FOUR_PI   0.07957747155f
 #define HALF_PI       1.57079632679f
 #define INV_HALF_PI   0.636619772367f
+#define THREE_INV_FOUR_PI 0.23873241463f
+#define FIVE_INV_SIXTEEN_PI 0.09947183943f
+#define FIFTEEN_INV_SIXTEEN_PI 0.29841551829f
+#define FIFTEEN_INV_FOUR_PI 1.19366207319f
+
 
 RWStructuredBuffer<float4> SH_0_1_r;
 RWStructuredBuffer<float4> SH_0_1_g;
@@ -40,9 +44,45 @@ float Random(uint seed)
 }
 
 float3 SampleColor(float3 direction)
-{   
+{
     float4 tex = _Env.SampleLevel(samplerLinearRepeat, direction, 0);
     return tex.rgb;
+}
+
+float Harmonic(int l, int m, float3 w) {
+    if (l == 0) {
+        return INV_FOUR_PI;
+    }
+    if (l == 1) {
+        if (m == -1) {
+            return THREE_INV_FOUR_PI * w.y;
+        }
+        if (m == 0) {
+            return THREE_INV_FOUR_PI * w.z;
+        }
+        if (m == 1) {
+            return THREE_INV_FOUR_PI * w.x;
+        }
+    }
+    if (l == 2) {
+        if (m == 0) {
+            return FIVE_INV_SIXTEEN_PI * (3 * w.z * w.z - 1);
+        }
+        if (m == 2) {
+            return FIFTEEN_INV_SIXTEEN_PI * (w.x * w.x - w.y * w.y);
+        }
+        float coef = FIFTEEN_INV_FOUR_PI;
+        if (m == -2) {
+            return coef * w.x * w.y;
+        }
+        if (m == -1) {
+            return coef * w.y * w.z;
+        }
+        if (m == 1) {
+            return coef * w.x * w.z;
+        }
+    }
+    return 10;
 }
 
 [numthreads(1024, 1, 1)]
@@ -50,32 +90,93 @@ void ComputeHarmonics(uint id : SV_DispatchThreadID)
 {
     const int THREADS = 1024;
     const int SAMPLES = 100;
-    
+
     // See SH.shader for more details
     float4 results[7] = {
         float4(0, 0, 0, 0), // SH_0_1_r
         float4(0, 0, 0, 0), // SH_0_1_g
         float4(0, 0, 0, 0), // SH_0_1_b
-        
+
         float4(0, 0, 0, 0), // SH_2_r
         float4(0, 0, 0, 0), // SH_2_g
         float4(0, 0, 0, 0), // SH_2_b
-        
+
         float4(0, 0, 0, 0), // SH_2_rgb
     };
-    
+    float c[3] = { 1.0f, 2.0f / 3, 0.25f };
+    for (int l = 0; l <= 2; l++) {
+        for (int m = -l; m <= l; m++) {
+            float3 res = (0, 0, 0);
+            for (int i = 0; i < SAMPLES; i++) {
+                float cos_theta = 2 * Random(2 * i * (id + 1)) - 1;
+                float sin_theta = sqrt(1 - cos_theta * cos_theta);
+                float alpha = Random(2 * i * (id + 1) + 1) * 2 * PI;
+                float3 w;
+                w.x = sin_theta * cos(alpha);
+                w.y = sin_theta * sin(alpha);
+                w.z = cos_theta;
+                res += SampleColor(w) * Harmonic(l, m, w);
+            }
+            res *= 4 * PI * c[l];
+            res /= SAMPLES;
+            if (l == 1 && m == 1) {
+                results[0].x = res.x;
+                results[1].x = res.y;
+                results[2].x = res.z;
+            }
+            if (l == 1 && m == -1) {
+                results[0].y = res.x;
+                results[1].y = res.y;
+                results[2].y = res.z;
+            }
+            if (l == 1 && m == 0) {
+                results[0].z = res.x;
+                results[1].z = res.y;
+                results[2].z = res.z;
+            }
+            if (l == 0 && m == 0) {
+                results[0].w = res.x;
+                results[1].w = res.y;
+                results[2].w = res.z;
+            }
+            if (l == 2 && m == -2) {
+                results[3].x = res.x;
+                results[4].x = res.y;
+                results[5].x = res.z;
+            }
+            if (l == 2 && m == -1) {
+                results[3].y = res.x;
+                results[4].y = res.y;
+                results[5].y = res.z;
+            }
+            if (l == 2 && m == 1) {
+                results[3].z = res.x;
+                results[4].z = res.y;
+                results[5].z = res.z;
+            }
+            if (l == 2 && m == 0) {
+                results[3].w = res.x;
+                results[4].w = res.y;
+                results[5].w = res.z;
+            }
+            if (l == 2 && m == 2) {
+                results[6].xyz = res;
+            }
+        }
+    }
+
     // Populate results buffer using monte-carlo method.
     // You can see the Random(i) function. Use it just as with the previous task.
-    
+
     // TASK: project light from _Env to spherical harmonic coefficients and store them in results[]
-    
+
     SH_0_1_r[id] = results[0];
     SH_0_1_g[id] = results[1];
     SH_0_1_b[id] = results[2];
-    
+
     SH_2_r[id] = results[3];
     SH_2_g[id] = results[4];
-    SH_2_b[id] = results[5];    
-    
+    SH_2_b[id] = results[5];
+
     SH_2_rgb[id] = results[6];
 }
